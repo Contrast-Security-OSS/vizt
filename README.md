@@ -1,29 +1,17 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+VIZT is a command line tool for visualizing Contrast trace XML exports.
 
-### What is this repository for? ###
+### Example
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+Print HTTP request data and trace propagation:
 
-### How do I get set up? ###
+```
+python3 vizt.py ~/Downloads/vulnerabilities2020-04-25.xml
+```
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+Include stack traces in the output:
 
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+```
+python3 vizt.py ~/Downloads/vulnerabilities2020-04-25.xml -s
+```

@@ -1,0 +1,114 @@
+#!/usr/local/bin/python3
+import argparse
+import xml.etree.ElementTree as ET
+import sys
+import os
+from base64 import b64decode
+
+class color:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+rows, columns = os.popen('stty size', 'r').read().split()
+LEN_HEADER = 200 if (int(columns) > 200) else int(columns)
+
+def parse( args ):
+    tree = ET.parse( args.trace )
+    root = tree.getroot()
+    
+    for finding in root.findall('./finding'):
+        # print request data
+        req = finding.find('./request')
+        if req is not None: 
+            print(color.HEADER + "-"*LEN_HEADER + color.ENDC)
+            if req.get('qs'): # is there a query string?
+                print( "{method} {uri}:{port}?{qs}".format( method=req.get('method'), uri=req.get('uri'), port=req.get('port'), qs=req.get('qs')) )
+            else:
+                print( "{method} {uri}:{port}".format( method=req.get('method'), uri=req.get('uri'), port=req.get('port')) )
+            
+            for header in req.findall('./headers/'):
+                print(header.get('name')+":", header.get('value'))
+
+            body = req.find('./body')
+            if body is not None and body.text is not None:
+                print("\n"+body.text)
+            
+            print(color.HEADER + "-"*LEN_HEADER + color.ENDC)
+
+        # print all events
+        for e in finding.findall('./events/'): 
+            sig = e.find('signature').text
+            etype = e.get('type')
+            obj = b64decode( e.find('object').text )
+            ret = b64decode( e.find('return').text ).decode()
+
+            ret_color = ""
+            last_index = 0
+            # sometime return data is truncated with '...' so we dont know the actual length to highlight correctly.
+            # e.g. http://something.examp...therestofthedata
+            # also have ranges that overlap
+            for tr in e.findall('./taint-ranges/taint-range'):
+                raw_range = tr.find('range').text
+                if raw_range: # can be None
+                    for raw_ranges in raw_range.split(','):# 22:54,42:67
+                        split_range = raw_ranges.split(':') 
+                        if( len( split_range) == 2):
+                            start_range = int( split_range[0] )
+                            end_range = int( split_range[1] )
+
+                            truncation = ret.find('...')
+                            if truncation > -1:
+                                if start_range >= truncation:
+                                    start_range = truncation+3
+                                    # end tag range is inaccurate now, so we should probably teleport to the end
+                                    end_range = len( ret )
+                            
+                            if start_range >= last_index: # don't want to double up the string. sometimes ranges overlap for multiple tags.
+                                ret_color = ret_color + ret[last_index:start_range] + color.FAIL + ret[start_range:end_range] + color.ENDC
+                                last_index = end_range
+            ret_color = ret_color + ret[last_index:]
+            
+            method_args = []
+            for arg in e.findall('./args/arg'):
+                tracked = arg.get('tracked')
+                if tracked == 'true':
+                    method_args.append( '"' + color.WARNING + b64decode(arg.text).decode() + color.ENDC + '"')
+                else:
+                    method_args.append( '"' + b64decode(arg.text).decode() + '"')
+
+            sig_args = sig[:sig.find('(')] + '(' + ','.join( method_args ) + ')'
+
+            print( color.HEADER + "[{}]".format(etype) + color.ENDC , sig_args, color.BOLD + "-->" + color.ENDC, ret_color )
+
+            # print stack frame
+            if args.stack:
+                for frame in e.findall('./stack/frame'):
+                    print( "    ", color.OKBLUE + frame.text + color.ENDC)
+                    
+        print(color.HEADER + "-"*LEN_HEADER + color.ENDC)
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description='Visualize Contrast Trace XML Exports')
+    parser.add_argument('trace', type=argparse.FileType('r'), help='.xml trace file')
+    parser.add_argument('-s', '--stack', action='store_true', help='Print stack frames.')
+
+    if len(argv) == 0:
+        parser.print_help()
+        sys.exit(0)
+    try:
+        args = parser.parse_args() 
+        parse( args )
+    except IOError as err: 
+        print(str(type(err)) + " : " + str(err))
+        parser.print_help()
+        sys.exit(2)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

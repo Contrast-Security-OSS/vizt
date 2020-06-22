@@ -45,8 +45,12 @@ def parse( args ):
         for e in finding.findall('./events/'): 
             sig = e.find('signature').text
             etype = e.get('type')
-            obj = b64decode( e.find('object').text )
-            ret = b64decode( e.find('return').text ).decode()
+            obj = ""
+            if e.find('object').text is not None: # can be None
+                obj = b64decode( e.find('object').text )
+            ret = ""
+            if e.find('return').text is not None:
+                ret = b64decode( e.find('return').text ).decode()
 
             ret_color = ""
             last_index = 0

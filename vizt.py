@@ -23,6 +23,14 @@ def parse( args ):
     root = tree.getroot()
     
     for finding in root.findall('./finding'):
+        # print finding data
+        print(color.HEADER + "-"*LEN_HEADER + color.ENDC)
+        print(color.BOLD+"UUID:"+color.ENDC, finding.get('uuid'))
+        print(color.BOLD+"Link:"+color.ENDC, finding.get('link'))
+        print(color.BOLD+"Agent Version:"+color.ENDC, finding.get('agent-version'))
+        print(color.BOLD+"Application:"+color.ENDC, finding.get('application-name'))
+        print(color.BOLD+"Rule ID:"+color.ENDC, finding.get('ruleId'))
+
         # print request data
         req = finding.find('./request')
         if req is not None: 

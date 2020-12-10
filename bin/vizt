@@ -89,10 +89,13 @@ def parse( args ):
             method_args = []
             for arg in e.findall('./args/arg'):
                 tracked = arg.get('tracked')
+                arg_text = ""
+                if arg.text:
+                    arg_text = b64decode(arg.text).decode()
                 if tracked == 'true':
-                    method_args.append( '"' + color.WARNING + b64decode(arg.text).decode() + color.ENDC + '"')
+                    method_args.append( '"' + color.WARNING + arg_text + color.ENDC + '"')
                 else:
-                    method_args.append( '"' + b64decode(arg.text).decode() + '"')
+                    method_args.append( '"' + arg_text + '"')
 
             sig_args = sig[:sig.find('(')] + '(' + ','.join( method_args ) + ')'
 
